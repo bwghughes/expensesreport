@@ -9,7 +9,8 @@ from flask import Flask, request, redirect, session, url_for, render_template
 
 app = Flask(__name__)
 
-# This information is obtained upon registration of a new GitHub
+# This information is obtained upon registration of a new FreeAgent App
+# See https://dev.freeagent.com for more deeets.
 client_id = os.environ.get('CLIENT_ID')
 client_secret = os.environ.get('CLIENT_SECRET')
 authorization_base_url = 'https://api.freeagent.com/v2/approve_app'
