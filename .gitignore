@@ -1,3 +1,5 @@
 Makefile
 
 .python-version
+.env
+*.pyc

@@ -9,6 +9,8 @@ from flask import Flask, request, redirect, session, url_for, render_template
 
 app = Flask(__name__)
 
+app.secret_key = os.environ.get('SECRET_KEY')
+
 # This information is obtained upon registration of a new FreeAgent App
 # See https://dev.freeagent.com for more deeets.
 client_id = os.environ.get('FA_CLIENT_ID')
@@ -91,6 +93,4 @@ def expenses():
 
 if __name__ == "__main__":
     # This allows us to use a plain HTTP callback
-    os.environ['DEBUG'] = "1"
-    app.secret_key = os.urandom(24)
     app.run(debug=True, port=5009)
