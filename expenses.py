@@ -11,8 +11,8 @@ app = Flask(__name__)
 
 # This information is obtained upon registration of a new FreeAgent App
 # See https://dev.freeagent.com for more deeets.
-client_id = os.environ.get('CLIENT_ID')
-client_secret = os.environ.get('CLIENT_SECRET')
+client_id = os.environ.get('FA_CLIENT_ID')
+client_secret = os.environ.get('FA_CLIENT_SECRET')
 authorization_base_url = 'https://api.freeagent.com/v2/approve_app'
 token_url = 'https://api.freeagent.com/v2/token_endpoint'
 
