@@ -7,6 +7,10 @@ from dateutil.parser import parse
 from requests_oauthlib import OAuth2Session
 from flask import Flask, request, redirect, session, url_for, render_template
 
+import logging
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
+
 app = Flask(__name__)
 
 app.secret_key = os.environ.get('SECRET_KEY')
@@ -18,7 +22,8 @@ client_secret = os.environ.get('FA_CLIENT_SECRET')
 authorization_base_url = 'https://api.freeagent.com/v2/approve_app'
 token_url = 'https://api.freeagent.com/v2/token_endpoint'
 
-expenses_url='https://api.freeagent.com/v2/expenses?from_date={0}-{1}-{2}&to_date={3}-{4}-{5}'
+expenses_url = 'https://api.freeagent.com/v2/expenses?from_date={0}-{1}-{2}&\
+                to_date={3}-{4}-{5}'
 
 
 @app.route("/")
@@ -29,7 +34,8 @@ def demo():
     using an URL with a few key OAuth parameters.
     """
     freeagent = OAuth2Session(client_id)
-    authorization_url, state = freeagent.authorization_url(authorization_base_url)
+    authorization_url, state = \
+        freeagent.authorization_url(authorization_base_url)
 
     # State is used to prevent CSRF, keep this for later.
     session['oauth_state'] = state
@@ -46,17 +52,19 @@ def callback():
     callback URL. With this redirection comes an authorization code included
     in the redirect URL. We will use that to obtain an access token.
     """
+    try:
+        freeagent = OAuth2Session(client_id, state=session['oauth_state'])
+        token = freeagent.fetch_token(token_url, client_secret=client_secret,
+                                      authorization_response=request.url)
 
-    freeagent = OAuth2Session(client_id, state=session['oauth_state'])
-    token = freeagent.fetch_token(token_url, client_secret=client_secret,
-                               authorization_response=request.url)
+        # At this point you can fetch protected resources but lets save
+        # the token and show how this is done from a persisted token
+        # in /profile.
+        session['oauth_token'] = token
 
-    # At this point you can fetch protected resources but lets save
-    # the token and show how this is done from a persisted token
-    # in /profile.
-    session['oauth_token'] = token
-
-    return redirect(url_for('.expenses'))
+        return redirect(url_for('.expenses'))
+    except Exception, e:
+        log.error(e)
 
 
 @app.route("/expenses", methods=["GET"])
@@ -69,16 +77,20 @@ def expenses():
         freeagent = OAuth2Session(client_id, token=session['oauth_token'])
     except KeyError:
         return redirect(url_for('.demo'))
-    expenses = freeagent.get(expenses_url.format(today.year, today.month, first,
-                                                 today.year, today.month, last)).json()
+    expenses = freeagent.get(expenses_url.format(today.year, today.month,
+                                                 first, today.year,
+                                                 today.month,
+                                                 last)).json()
 
     # Strip out rebillable expenses and do some sorting of numbers.
     rebillable_expenses = [dict(description=v.get('description'),
                                 amount=abs(Decimal(v.get('gross_value'))),
-                                receipt_image=v.get('attachment').get('content_src_small'),
+                                receipt_image=v.get('attachment').
+                                get('content_src_small'),
                                 receipt=v.get('attachment').get('content_src'),
                                 date=parse(v.get('dated_on')))
-                                for v in expenses.get('expenses') if v.get('rebill_to_project')]
+                           for v in expenses.get('expenses') if
+                           v.get('rebill_to_project')]
 
     # Sort them in date order.
     rebillable_expenses = sorted(rebillable_expenses, key=lambda k: k['date'])
@@ -87,9 +99,9 @@ def expenses():
     total = sum([v.get('amount') for v in rebillable_expenses])
 
     return render_template('expenses.html', year=today.year,
-                                            month=calendar.month_name[today.month],
-                                            expenses=rebillable_expenses,
-                                            total=total)
+                           month=calendar.month_name[today.month],
+                           expenses=rebillable_expenses,
+                           total=total)
 
 if __name__ == "__main__":
     # This allows us to use a plain HTTP callback
