@@ -5,7 +5,8 @@ from decimal import Decimal
 
 from dateutil.parser import parse
 from requests_oauthlib import OAuth2Session
-from flask import Flask, request, redirect, session, url_for, render_template
+from flask import Flask, request, redirect, session, url_for, render_template, \
+    abort
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -65,6 +66,7 @@ def callback():
         return redirect(url_for('.expenses'))
     except Exception, e:
         log.error(e)
+        return abort(500)
 
 
 @app.route("/expenses", methods=["GET"])
@@ -72,14 +74,18 @@ def expenses():
     """Fetching a protected resource using an OAuth 2 token.
     """
     today = date.today()
-    first, last = calendar.monthrange(today.year, today.month)
+    month = today.month
+    if request.args.get('month'):
+        month = int(request.args.get('month'))
+
+    first, last = calendar.monthrange(today.year, month)
     try:
         freeagent = OAuth2Session(client_id, token=session['oauth_token'])
     except KeyError:
         return redirect(url_for('.demo'))
-    expenses = freeagent.get(expenses_url.format(today.year, today.month,
+    expenses = freeagent.get(expenses_url.format(today.year, month,
                                                  first, today.year,
-                                                 today.month,
+                                                 month,
                                                  last)).json()
 
     # Strip out rebillable expenses and do some sorting of numbers.
@@ -99,7 +105,7 @@ def expenses():
     total = sum([v.get('amount') for v in rebillable_expenses])
 
     return render_template('expenses.html', year=today.year,
-                           month=calendar.month_name[today.month],
+                           month=calendar.month_name[month],
                            expenses=rebillable_expenses,
                            total=total)
 
